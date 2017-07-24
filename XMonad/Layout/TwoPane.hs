@@ -1,4 +1,6 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -39,24 +41,24 @@ import XMonad.StackSet ( focus, up, down)
 --
 -- "XMonad.Doc.Extending#Editing_the_layout_hook"
 
-data TwoPane a =
-    TwoPane Rational Rational
-    deriving ( Show, Read )
+data TwoPane a = TwoPane
+    { tp_delta :: Rational -- ^ 'Resize' by /this/ much
+    , tp_split :: Rational -- ^ Size ratio of the master window
+    } deriving ( Show, Read )
 
 instance LayoutClass TwoPane a where
-    doLayout (TwoPane _ split) r s = return (arrange r s,Nothing)
+    doLayout TwoPane {..} r s = return (arrange r s,Nothing)
         where
           arrange rect st = case reverse (up st) of
                               (master:_) -> [(master,left),(focus st,right)]
                               [] -> case down st of
                                       (next:_) -> [(focus st,left),(next,right)]
                                       [] -> [(focus st, rect)]
-              where (left, right) = splitHorizontallyBy split rect
+              where (left, right) = splitHorizontallyBy tp_split rect
 
-    handleMessage (TwoPane delta split) x =
-        return $ case fromMessage x of
-                   Just Shrink -> Just (TwoPane delta (split - delta))
-                   Just Expand -> Just (TwoPane delta (split + delta))
-                   _           -> Nothing
+    handleMessage TwoPane {..} = return . fmap resize . fromMessage where
+        resize how = case how of
+            Shrink -> TwoPane { tp_split = tp_split - tp_delta, .. }
+            Expand -> TwoPane { tp_split = tp_split + tp_delta, .. }
 
     description _ = "TwoPane"
