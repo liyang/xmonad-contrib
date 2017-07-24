@@ -1,4 +1,8 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  XMonad.Layout.FixedColumn
@@ -51,33 +55,31 @@ import XMonad.StackSet as W
 
 -- | A tiling mode based on preserving a nice fixed width
 --   window. Supports 'Shrink', 'Expand' and 'IncMasterN'.
-data FixedColumn a = FixedColumn !Int !Int !Int !Int
-    -- ^ These four parameters are, in order:
-    --
-    -- * Number of windows in the master pane
-    -- * Number to increment by when resizing
-    -- * Default width of master pane
-    -- * Column width for normal windows
-    deriving (Read, Show)
+data FixedColumn a = FixedColumn
+    { fc_nmaster  :: !Int -- ^ Number of windows in the master pane
+    , fc_delta    :: !Int -- ^ Number to increment by when resizing
+    , fc_ncol     :: !Int -- ^ Default width of master pane
+    , fc_fallback :: !Int -- ^ Column width for normal windows
+    } deriving (Read, Show)
 
 instance LayoutClass FixedColumn Window where
-    doLayout (FixedColumn nmaster _ ncol fallback) r s = do
-            fws <- mapM (widthCols fallback ncol) ws
-            let frac = maximum (take nmaster fws) // rect_width r
-                rs   = tile frac r nmaster (length ws)
+    doLayout FixedColumn {..} r s = do
+            fws <- mapM (widthCols fc_fallback fc_ncol) ws
+            let frac = maximum (take fc_nmaster fws) // rect_width r
+                rs   = tile frac r fc_nmaster (length ws)
             return $ (zip ws rs, Nothing)
         where ws     = W.integrate s
               x // y = fromIntegral x / fromIntegral y
 
-    pureMessage (FixedColumn nmaster delta ncol fallback) m =
+    pureMessage FixedColumn {..} m =
             msum [fmap resize     (fromMessage m)
                  ,fmap incmastern (fromMessage m)]
         where resize Shrink
-                  = FixedColumn nmaster delta (max 0 $ ncol - delta) fallback
+                  = FixedColumn { fc_ncol = max 0 $ fc_ncol - fc_delta, .. }
               resize Expand
-                  = FixedColumn nmaster delta (ncol + delta) fallback
+                  = FixedColumn { fc_ncol = fc_ncol + fc_delta, .. }
               incmastern (IncMasterN d)
-                  = FixedColumn (max 0 (nmaster+d)) delta ncol fallback
+                  = FixedColumn { fc_nmaster = max 0 $ fc_nmaster + d, .. }
 
     description _ = "FixedColumn"
 
