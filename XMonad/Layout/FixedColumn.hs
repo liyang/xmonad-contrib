@@ -57,9 +57,9 @@ import XMonad.StackSet as W
 --   window. Supports 'Shrink', 'Expand' and 'IncMasterN'.
 data FixedColumn a = FixedColumn
     { fc_nmaster  :: !Int -- ^ Number of windows in the master pane
-    , fc_delta    :: !Int -- ^ Number to increment by when resizing
-    , fc_ncol     :: !Int -- ^ Default width of master pane
-    , fc_fallback :: !Int -- ^ Column width for normal windows
+    , fc_delta    :: !Int -- ^ 'Resize' by /this/ many columns
+    , fc_ncol     :: !Int -- ^ Default column width of master pane
+    , fc_fallback :: !Int -- ^ Pixel width of one column, if not a terminal
     } deriving (Read, Show)
 
 instance LayoutClass FixedColumn Window where
